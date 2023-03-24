@@ -3,37 +3,34 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour {
+    [SerializeField] private readonly float directionOffset = 154.0f;
+    [SerializeField] private readonly float movementSpeed = 10.0f;
+    [SerializeField] private readonly float jumpForce = 16.0f;
+    [SerializeField] private readonly float groundCheckRadius;
+    [SerializeField] private readonly float wallCheckDistance = 2.0f;
+    
+    [SerializeField] private LayerMask groundLayer;
+    [SerializeField] private Transform groundCheck;
+    [SerializeField] private Transform wallCheck;
+    
     private float movementInputDirection;
     private bool isFacingRight = true;
     private bool isWalking;
-    private bool canJump;
     private bool isGrounded;
     private bool isTouchingWall;
-    public float xPos;
-    public float directionOffset = 154.0f;
-    public float movementSpeed = 10.0f;
-    public float jumpForce = 16.0f;
-    public float groundCheckRadius;
-    public float wallCheckDistance = 2.0f;
 
     private Rigidbody2D rb;
     private Animator anim;
-    public LayerMask whatIsGround;
-    public Transform groundCheck;
-    public Transform wallCheck;
 
-    // Start is called before the first frame update
     void Start() {
         rb = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
     }
 
-    // Update is called once per frame
     void Update() {
         CheckInput();
         CheckMovementDirection();
         UpdateAnimations();
-        CheckIfCanJump();
     }
     
     private void FixedUpdate() {
@@ -41,31 +38,16 @@ public class PlayerController : MonoBehaviour {
         CheckSurroundings();
     }
 
-    public void CheckSurroundings() {
-       isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, whatIsGround);
-       isTouchingWall = Physics2D.Raycast(wallCheck.position, transform.right, wallCheckDistance, whatIsGround);
-    }
-
-    private void CheckIfCanJump() {
-        if(isGrounded) {
-            canJump = true;
-        } else {
-            canJump = false;
-        }
+    private void CheckSurroundings() {
+       isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
+       isTouchingWall = Physics2D.Raycast(wallCheck.position, transform.right, wallCheckDistance, groundLayer);
     }
     
     private void CheckMovementDirection() {
-        if (isFacingRight && movementInputDirection < 0) {
+        if ((isFacingRight && movementInputDirection < 0) || (!isFacingRight && movementInputDirection > 0))
             Flip();
-        } else if (!isFacingRight && movementInputDirection > 0) {
-            Flip();
-        }
 
-        if (Mathf.Abs(rb.velocity.x) > 0.1f) {
-            isWalking = true;
-        } else {
-            isWalking = false;
-        }
+        isWalking = Mathf.Abs(rb.velocity.x) > 0.1f;
     }
     
     private void UpdateAnimations() {
@@ -83,7 +65,7 @@ public class PlayerController : MonoBehaviour {
     }
 
     private void Jump() {
-        if(canJump) {
+        if(isGrounded) {
             rb.velocity = new Vector2(rb.velocity.x, jumpForce);
         }
     }
@@ -97,15 +79,9 @@ public class PlayerController : MonoBehaviour {
         transform.Rotate(0.0f, 180.0f, 0.0f);
 
         // Fixes a weird positioning bug when Player is rotated
-        if (isFacingRight) {
-            xPos = transform.position.x;
-            xPos += directionOffset;
-            transform.position = new Vector3(xPos, transform.position.y, transform.position.z);
-        } else {
-            xPos = transform.position.x;
-            xPos -= directionOffset;
-            transform.position = new Vector3(xPos, transform.position.y, transform.position.z);
-        }
+        float xPos = transform.position.x;
+        xPos += isFacingRight ? directionOffset : -directionOffset;
+        transform.position = new Vector3(xPos, transform.position.y, transform.position.z);
     }
 
     private void OnDrawGizmos() {

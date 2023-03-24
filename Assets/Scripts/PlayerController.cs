@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour {
-    [SerializeField] private readonly float directionOffset = 154.0f;
-    [SerializeField] private readonly float movementSpeed = 10.0f;
-    [SerializeField] private readonly float jumpForce = 16.0f;
-    [SerializeField] private readonly float groundCheckRadius;
-    [SerializeField] private readonly float wallCheckDistance = 2.0f;
+    [SerializeField] private float directionOffset = 154.0f;
+    [SerializeField] private float movementSpeed = 10.0f;
+    [SerializeField] private float jumpForce = 16.0f;
+    [SerializeField] private float groundCheckRadius;
+    [SerializeField] private float wallCheckDistance = 2.0f;
     
     [SerializeField] private LayerMask groundLayer;
     [SerializeField] private Transform groundCheck;

@@ -36,11 +36,10 @@ public class PlayerController : MonoBehaviour {
     private bool isWalking;
 
     [Space]
-
+    public bool xInputIsRight = true;
+    
     private bool groundTouch;
     private bool hasDashed;
-    
-    public int side = 1;
 
     // Start is called before the first frame update
     void Start()
@@ -54,13 +53,13 @@ public class PlayerController : MonoBehaviour {
     // Update is called once per frame
     void Update()
     {
-        float x = Input.GetAxis("Horizontal");
-        float y = Input.GetAxis("Vertical");
-        float xRaw = Input.GetAxisRaw("Horizontal");
-        float yRaw = Input.GetAxisRaw("Vertical");
-        Vector2 dir = new Vector2(x, y);
+        float xInput = Input.GetAxis("Horizontal");
+        float yInput = Input.GetAxis("Vertical");
+        float xRawInput = Input.GetAxisRaw("Horizontal");
+        float yRawInput = Input.GetAxisRaw("Vertical");
+        Vector2 inputDir = new Vector2(xInput, yInput);
 
-        Walk(dir);
+        Walk(inputDir);
         CheckMovementDirection();
         UpdateAnimations();
 
@@ -74,7 +73,7 @@ public class PlayerController : MonoBehaviour {
 
         if(isTouchingWall && !isGrounded)
         {
-            if (x != 0)
+            if (xInput != 0)
             {
                 wallSlide = true;
                 WallSlide();
@@ -87,16 +86,13 @@ public class PlayerController : MonoBehaviour {
         if (Input.GetButtonDown("Jump"))
         {
             if (isGrounded)
-                Jump(Vector2.up, false);
+                Jump(Vector2.up);
             if (isTouchingWall && !isGrounded)
                 WallJump();
         }
 
         if (Input.GetButtonDown("Dash") && !hasDashed)
-        {
-            if(xRaw != 0 || yRaw != 0)
-                Dash(xRaw, yRaw);
-        }
+            Dash(xRawInput, yRawInput);
 
         if (isGrounded && !groundTouch)
         {
@@ -105,48 +101,39 @@ public class PlayerController : MonoBehaviour {
         }
 
         if(!isGrounded && groundTouch)
-        {
             groundTouch = false;
-        }
 
         if (wallSlide || !canMove)
             return;
 
-        if(x > 0)
-        {
-            side = 1;
-        }
-        if (x < 0)
-        {
-            side = -1;
-        }
+        if(xInput != 0) xInputIsRight = xInput > 0;
     }
 
-    private void FixedUpdate() {
-        CheckSurroundings();
+    private void FixedUpdate()
+    {
+        CollisionDetection();
     }
 
-    private void CheckSurroundings() {
+    private void CollisionDetection()
+    {
        isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, whatIsGround);
        isTouchingWall = Physics2D.Raycast(wallCheck.position, transform.right, wallCheckDistance, whatIsGround);
     }
 
-    private void CheckMovementDirection() {
+    private void CheckMovementDirection()
+    {
         movementInputDirection = Input.GetAxisRaw("Horizontal");
-        if (side==1 && movementInputDirection < 0) {
+        if (xInputIsRight && movementInputDirection < 0) {
             Flip();
-        } else if (side==-1 && movementInputDirection > 0) {
+        } else if (!xInputIsRight && movementInputDirection > 0) {
             Flip();
         }
 
-        if (Mathf.Abs(rb.velocity.x) > 0.1f) {
-            isWalking = true;
-        } else {
-            isWalking = false;
-        }
+        isWalking = Mathf.Abs(rb.velocity.x) > 0.1f;
     }
 
-    private void UpdateAnimations() {
+    private void UpdateAnimations()
+    {
         anim.SetBool("isWalking", isWalking);
         anim.SetBool("isGrounded", isGrounded);
         anim.SetFloat("yVelocity", rb.velocity.y);
@@ -163,6 +150,9 @@ public class PlayerController : MonoBehaviour {
     {
         Camera.main.transform.DOComplete();
         Camera.main.transform.DOShakePosition(.2f, .5f, 14, 90, false, true);
+        
+        if (x == 0 && y == 0)
+            x = xInputIsRight ? 1 : -1;
 
         hasDashed = true;
 
@@ -201,25 +191,23 @@ public class PlayerController : MonoBehaviour {
 
     private void WallJump()
     {
-        if ((side == 1 && isTouchingWall) || side == -1 && isTouchingWall)
-        {
-            side *= -1;
-            Flip();
-        }
+        if (!isTouchingWall) return;
+        
+        xInputIsRight = !xInputIsRight;
+        Flip(false);
 
-        StopCoroutine(DisableMovement(0));
-        StartCoroutine(DisableMovement(.1f));
+        // StopCoroutine(DisableMovement(0));
+        // StartCoroutine(DisableMovement(.1f));
 
-        Vector2 wallDir = isTouchingWall ? Vector2.left : Vector2.right;
+        Vector2 wallDir = xInputIsRight ? Vector2.right : Vector2.left;
 
-        Jump((Vector2.up / 1.5f + wallDir / 1.5f), true);
+        Jump(Vector2.up / 1.5f + wallDir / 1.5f);
 
         wallJumped = true;
     }
-
+    
     private void WallSlide()
     {
-
         if (!canMove)
             return;
 
@@ -249,7 +237,7 @@ public class PlayerController : MonoBehaviour {
         }
     }
 
-    private void Jump(Vector2 dir, bool wall)
+    private void Jump(Vector2 dir)
     {
         rb.velocity = new Vector2(rb.velocity.x, 0);
         rb.velocity += dir * jumpForce;
@@ -267,24 +255,25 @@ public class PlayerController : MonoBehaviour {
         rb.drag = x;
     }
 
-    private void Flip() {
-        side *= -1;
+    private void Flip(bool useOffset = true) 
+    {
+        xInputIsRight = !xInputIsRight;
         transform.Rotate(0.0f, 180.0f, 0.0f);
 
-            // Fixes a weird positioning bug when Player is rotated
+        // Fixes a weird positioning bug when Player is rotated
+        xPos = transform.position.x;
             
-            if (side==1) {
-                xPos = transform.position.x;
-                xPos += directionOffset;
-                transform.position = new Vector3(xPos, transform.position.y, transform.position.z);
-            } else {
-                xPos = transform.position.x;
-                xPos -= directionOffset;
-                transform.position = new Vector3(xPos, transform.position.y, transform.position.z);
-            }
+        if (xInputIsRight && useOffset) {
+            xPos += directionOffset;
+        } else if (useOffset) {
+            xPos -= directionOffset;
         }
+        
+        transform.position = new Vector3(xPos, transform.position.y, transform.position.z);
+    }
 
-    private void OnDrawGizmos() {
+    private void OnDrawGizmos() 
+    {
         Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
         Gizmos.DrawLine(wallCheck.position, new Vector3(wallCheck.position.x + wallCheckDistance, wallCheck.position.y, wallCheck.position.z));
     }

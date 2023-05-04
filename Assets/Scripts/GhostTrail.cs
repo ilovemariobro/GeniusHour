@@ -28,12 +28,11 @@ public class GhostTrail : MonoBehaviour
 
         for (int i = 0; i < ghostsParent.childCount; i++)
         {
-            Debug.Log($"Dashing {i}/3");
+            // Debug.Log($"Dashing {i}/3");
             Transform currentGhost = ghostsParent.GetChild(i);
             SpriteRenderer currentSr = currentGhost.GetComponent<SpriteRenderer>();
-            Vector3 offset = new Vector3(pc.xInputIsRight ? 0 : directionOffset,0,0);
-            s.AppendCallback(()=> currentGhost.position = pc.transform.position+offset);
-            s.AppendCallback(() => currentSr.flipX = pc.sr.flipX);
+            s.AppendCallback(()=> currentGhost.position = pc.transform.position);
+            s.AppendCallback(() => currentSr.flipX = !pc.xInputIsRight);
             s.AppendCallback(()=>currentSr.sprite = pc.sr.sprite);
             s.Append(currentSr.material.DOColor(trailColor, 0));
             s.AppendCallback(() => FadeSprite(currentGhost));

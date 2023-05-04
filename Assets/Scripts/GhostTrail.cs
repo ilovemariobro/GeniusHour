@@ -6,7 +6,9 @@ public class GhostTrail : MonoBehaviour
     private PlayerController move;
     private Animator anim;
     private SpriteRenderer sr;
+    private readonly float directionOffset = 153.0f;
     public Transform ghostsParent;
+    public GameObject player;
     public Color trailColor;
     public Color fadeColor;
     public float ghostInterval;
@@ -28,7 +30,7 @@ public class GhostTrail : MonoBehaviour
         {
             Transform currentGhost = ghostsParent.GetChild(i);
             SpriteRenderer currentSr = currentGhost.GetComponent<SpriteRenderer>();
-            s.AppendCallback(()=> currentGhost.position = move.transform.position);
+            s.AppendCallback(()=> currentGhost.position = move.transform.position+new Vector3(directionOffset,0,0));
             s.AppendCallback(() => currentSr.flipX = move.sr.flipX);
             s.AppendCallback(()=>currentSr.sprite = move.sr.sprite);
             s.Append(currentSr.material.DOColor(trailColor, 0));

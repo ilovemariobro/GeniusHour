@@ -24,9 +24,8 @@ public class PlayerController : MonoBehaviour {
     public float groundCheckRadius = 0.3f;
     public float wallCheckDistance = 0.4f;
     public float xPos;
-    public float directionOffset = 154.0f;
+    private float directionOffset = 153.0f;
     public float wallJumpForce = 20;
-    public int side = 1;
     private float movementInputDirection;
     private int lastWallJumpDirection;
 
@@ -72,26 +71,19 @@ public class PlayerController : MonoBehaviour {
         UpdateAnimations();
         CheckIfCanJump();
 
-        if(xInputIsRight) {
-            side = 1;
-        } else {
-            side = -1;
-        }
         if (isGrounded && !isDashing)
         {
             wallJumped = false;
             GetComponent<Jumping>().enabled = true;
         }
         
-        rb.gravityScale = 3;
-
         if(isTouchingWall && !isGrounded)
         {
-            if (xInput != 0)
-            {
+            // if (xInput != 0)
+            // {
                 isWallSliding = true;
                 WallSlide();
-            }
+            // }
         }
 
         if (!isTouchingWall || isGrounded)
@@ -135,16 +127,11 @@ public class PlayerController : MonoBehaviour {
     }
 
     private void CheckIfCanJump() {
-        if (isTouchingWall) {
+        if (isTouchingWall)
             canWallJump = true;
-        }
     }
     private void CheckIfWallSliding() {
-        if (isTouchingWall & movementInputDirection == side && rb.velocity.y < 0) {
-            isWallSliding = true;
-        } else {
-            isWallSliding = false;
-        }
+        isWallSliding = isTouchingWall && movementInputDirection == (xInputIsRight ? 1 : -1) && rb.velocity.y < 0;
     }
 
     private void CheckMovementDirection()
@@ -203,7 +190,7 @@ public class PlayerController : MonoBehaviour {
 
         yield return new WaitForSeconds(.3f);
 
-        rb.gravityScale = 3;
+        rb.gravityScale = 4;
         GetComponent<Jumping>().enabled = true;
         wallJumped = false;
         isDashing = false;
@@ -231,7 +218,7 @@ public class PlayerController : MonoBehaviour {
             //canFlip = true;
             hasWallJumped = true;
             //wallJumpTimer = wallJumpTimerSet;
-            lastWallJumpDirection = -side;
+            lastWallJumpDirection = xInputIsRight ? -1 : 1;
         }
     }
     

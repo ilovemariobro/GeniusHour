@@ -6,12 +6,14 @@ public class Jumping : MonoBehaviour {
     private Rigidbody2D rb;
     public float fallMultiplier = 2.5f;
     public float lowJumpMultiplier = 2f;
+    public bool doUpdate = true;
 
     void Start() {
         rb = GetComponent<Rigidbody2D>();
     }
 
     void Update() {
+        if (!doUpdate) return;
         if(rb.velocity.y < 0) {
             rb.velocity += Vector2.up * Physics2D.gravity.y * (fallMultiplier - 1) * Time.deltaTime;
         } else if(rb.velocity.y > 0 && !Input.GetButton("Jump")) {

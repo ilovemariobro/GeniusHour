@@ -24,7 +24,7 @@ public class PlayerController : MonoBehaviour {
     public float groundCheckRadius = 0.3f;
     public float wallCheckDistance = 0.4f;
     public float xPos;
-    private float directionOffset = 153.0f;
+    public float directionOffset = 153.0f;
     public float wallJumpForce = 20;
     private float movementInputDirection;
     private int lastWallJumpDirection;

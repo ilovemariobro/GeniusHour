@@ -23,7 +23,6 @@ public class PlayerController : MonoBehaviour {
     public float wallSlideSpeed = 2;
     public float groundCheckRadius = 0.3f;
     public float wallCheckDistance = 0.4f;
-    public float xPos;
     public float directionOffset = 153.0f;
     public float wallJumpForce = 20;
     private float movementInputDirection;
@@ -39,7 +38,6 @@ public class PlayerController : MonoBehaviour {
     private bool isGrounded;
     private bool isWalking;
     private bool hasWallJumped;
-    private bool canWallJump;
 
     [Space]
     public bool xInputIsRight = true;
@@ -53,8 +51,7 @@ public class PlayerController : MonoBehaviour {
         sr = GetComponent<SpriteRenderer>();
         rb = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
-        movementInputDirection = Input.GetAxisRaw("Horizontal");
-        wallJumpDirection.Normalize();
+        // wallJumpDirection.Normalize();
     }
 
     // Update is called once per frame
@@ -69,7 +66,6 @@ public class PlayerController : MonoBehaviour {
         Walk(inputDir);
         CheckMovementDirection();
         UpdateAnimations();
-        CheckIfCanJump();
 
         if (isGrounded && !isDashing)
         {
@@ -93,7 +89,7 @@ public class PlayerController : MonoBehaviour {
         {
             if (isGrounded)
                 Jump(Vector2.up);
-            if (isTouchingWall && !isGrounded)
+            else if (isTouchingWall)
                 WallJump();
         }
 
@@ -101,10 +97,7 @@ public class PlayerController : MonoBehaviour {
             Dash(xRawInput, yRawInput);
 
         if (isGrounded && !groundTouch)
-        {
             GroundTouch();
-            groundTouch = true;
-        }
 
         if(!isGrounded && groundTouch)
             groundTouch = false;
@@ -125,11 +118,7 @@ public class PlayerController : MonoBehaviour {
        isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, whatIsGround);
        isTouchingWall = Physics2D.Raycast(wallCheck.position, transform.right, wallCheckDistance, whatIsGround);
     }
-
-    private void CheckIfCanJump() {
-        if (isTouchingWall)
-            canWallJump = true;
-    }
+    
     private void CheckIfWallSliding() {
         isWallSliding = isTouchingWall && movementInputDirection == (xInputIsRight ? 1 : -1) && rb.velocity.y < 0;
     }
@@ -158,6 +147,7 @@ public class PlayerController : MonoBehaviour {
     {
         hasDashed = false;
         isDashing = false;
+        groundTouch = true;
     }
 
     private void Dash(float x, float y)
@@ -205,21 +195,22 @@ public class PlayerController : MonoBehaviour {
 
     private void WallJump()
     {
-        if (canWallJump) {
-            rb.velocity = new Vector2(rb.velocity.x, 0.0f);
-            isWallSliding = false;
-            Vector2 forceToAdd = new Vector2(wallJumpForce * wallJumpDirection.x * movementInputDirection, wallJumpForce * wallJumpDirection.y);
-            rb.AddForce(forceToAdd, ForceMode2D.Impulse);
-            //jumpTimer = 0;
-            //isAttemptingToJump = false;
-            //checkJumpMultiplier = true;
-            //turnTimer = 0;
-            canMove = true;
-            //canFlip = true;
-            hasWallJumped = true;
-            //wallJumpTimer = wallJumpTimerSet;
-            lastWallJumpDirection = xInputIsRight ? -1 : 1;
-        }
+        if (!isTouchingWall) return;
+        
+        // rb.velocity = new Vector2(rb.velocity.x, 0.0f);
+        isWallSliding = false;
+        Vector2 forceToAdd = new Vector2(wallJumpForce * wallJumpDirection.x * (xInputIsRight ? -1 : 1), wallJumpForce * wallJumpDirection.y);
+        Debug.Log($"Wall Jumping With force: {wallJumpForce}*{wallJumpDirection.x}*{(xInputIsRight ? -1 : 1)} = {forceToAdd.x}");
+        rb.AddForce(forceToAdd, ForceMode2D.Impulse);
+        //jumpTimer = 0;
+        //isAttemptingToJump = false;
+        //checkJumpMultiplier = true;
+        //turnTimer = 0;
+        canMove = true;
+        //canFlip = true;
+        hasWallJumped = true;
+        //wallJumpTimer = wallJumpTimerSet;
+        lastWallJumpDirection = xInputIsRight ? -1 : 1;
     }
     
     private void WallSlide() {
@@ -233,15 +224,17 @@ public class PlayerController : MonoBehaviour {
         if (!canMove) {
             isWalking = false;
             return;
-        }   
+        }
+        
+        Vector2 newVelocity = new Vector2(dir.x * speed, rb.velocity.y);
+        
         if (!wallJumped)
         {
-            rb.velocity = new Vector2(dir.x * speed, rb.velocity.y);
+            rb.velocity = newVelocity;
+            return;
         }
-        else
-        {
-            rb.velocity = Vector2.Lerp(rb.velocity, (new Vector2(dir.x * speed, rb.velocity.y)), wallJumpLerp * Time.deltaTime);
-        }
+        
+        rb.velocity = Vector2.Lerp(rb.velocity, newVelocity, wallJumpLerp * Time.deltaTime);
     }
 
     private void Jump(Vector2 dir)
@@ -268,7 +261,7 @@ public class PlayerController : MonoBehaviour {
         transform.Rotate(0.0f, 180.0f, 0.0f);
 
         // Fixes a weird positioning bug when Player is rotated
-        xPos = transform.position.x;
+        float xPos = transform.position.x;
             
         if (xInputIsRight && useOffset) {
             xPos += directionOffset;

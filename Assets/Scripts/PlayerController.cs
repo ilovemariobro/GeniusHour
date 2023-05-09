@@ -11,6 +11,7 @@ public class PlayerController : MonoBehaviour {
     public Transform groundCheck;
     public Transform wallCheck;
     public SpriteRenderer sr;
+    public Vector2 wallJumpDirection;
 
     [Space]
     [Header("Stats")]
@@ -19,21 +20,35 @@ public class PlayerController : MonoBehaviour {
     public float slideSpeed = 5;
     public float wallJumpLerp = 10;
     public float dashSpeed = 20;
-    public float groundCheckRadius;
-    public float wallCheckDistance;
-    public float xPos;
-    public float directionOffset = 154.0f;
+    public float wallSlideSpeed = 2;
+    public float groundCheckRadius = 0.3f;
+    public float wallCheckDistance = 0.4f;
+    public float directionOffset = 153.0f;
+    public float wallJumpForce = 20;
+    public float jumpTimerSet = 0.15f;
+    public float turnTimerSet = 0.1f;
+    public float wallJumpTimerSet = 0.5f;
     private float movementInputDirection;
+    private float jumpTimer;
+    private float turnTimer;
+    private float wallJumpTimer;
+    private int lastWallJumpDirection;
+    public int side = 1;
 
     [Space]
     [Header("Booleans")]
-    public bool canMove;
     public bool wallJumped;
-    public bool wallSlide;
+    public bool isWallSliding;
     public bool isDashing;
     private bool isTouchingWall;
     private bool isGrounded;
     private bool isWalking;
+    private bool hasWallJumped;
+    private bool isAttemptingToJump;
+    private bool canNormalJump;
+    private bool canWallJump;
+    private bool canMove;
+    private bool canFlip;
 
     [Space]
     public bool xInputIsRight = true;
@@ -47,7 +62,7 @@ public class PlayerController : MonoBehaviour {
         sr = GetComponent<SpriteRenderer>();
         rb = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
-        movementInputDirection = Input.GetAxisRaw("Horizontal");
+        wallJumpDirection.Normalize();
     }
 
     // Update is called once per frame
@@ -59,9 +74,12 @@ public class PlayerController : MonoBehaviour {
         float yRawInput = Input.GetAxisRaw("Vertical");
         Vector2 inputDir = new Vector2(xInput, yInput);
 
-        Walk(inputDir);
         CheckMovementDirection();
         UpdateAnimations();
+        CheckJump();
+
+        if(canMove)
+            Walk(inputDir);
 
         if (isGrounded && !isDashing)
         {
@@ -69,41 +87,58 @@ public class PlayerController : MonoBehaviour {
             GetComponent<Jumping>().enabled = true;
         }
         
-        rb.gravityScale = 3;
-
         if(isTouchingWall && !isGrounded)
         {
-            if (xInput != 0)
-            {
-                wallSlide = true;
+            // if (xInput != 0)
+            // {
+                isWallSliding = true;
                 WallSlide();
-            }
+            // }
         }
 
         if (!isTouchingWall || isGrounded)
-            wallSlide = false;
+            isWallSliding = false;
 
-        if (Input.GetButtonDown("Jump"))
-        {
-            if (isGrounded)
-                Jump(Vector2.up);
-            if (isTouchingWall && !isGrounded)
-                WallJump();
+        if (Input.GetButtonDown("Jump")) {
+            if (isGrounded) {
+                NormalJump(Vector2.up);
+            } else {
+                jumpTimer = jumpTimerSet;
+                isAttemptingToJump = true;
+            }
         }
+
+        if(isTouchingWall)
+            canWallJump = true;
 
         if (Input.GetButtonDown("Dash") && !hasDashed)
             Dash(xRawInput, yRawInput);
+        
+        if(Input.GetButtonDown("Horizontal") && isTouchingWall) {
+            if(!isGrounded && movementInputDirection != side) {
+                canMove = false;
+                canFlip = false;
+
+                turnTimer = turnTimerSet;
+            }
+        }
+
+        if(!canMove) {
+            turnTimer -= Time.deltaTime;
+
+            if(turnTimer <=0) {
+                canMove = true;
+                canFlip = true;
+            }
+        }
 
         if (isGrounded && !groundTouch)
-        {
             GroundTouch();
-            groundTouch = true;
-        }
 
         if(!isGrounded && groundTouch)
             groundTouch = false;
 
-        if (wallSlide || !canMove)
+        if (isWallSliding || !canMove)
             return;
 
         if(xInput != 0) xInputIsRight = xInput > 0;
@@ -113,11 +148,15 @@ public class PlayerController : MonoBehaviour {
     {
         CollisionDetection();
     }
-
+    
     private void CollisionDetection()
     {
        isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, whatIsGround);
        isTouchingWall = Physics2D.Raycast(wallCheck.position, transform.right, wallCheckDistance, whatIsGround);
+    }
+    
+    private void CheckIfWallSliding() {
+        isWallSliding = isTouchingWall && movementInputDirection == (xInputIsRight ? 1 : -1) && rb.velocity.y < 0;
     }
 
     private void CheckMovementDirection()
@@ -137,20 +176,19 @@ public class PlayerController : MonoBehaviour {
         anim.SetBool("isWalking", isWalking);
         anim.SetBool("isGrounded", isGrounded);
         anim.SetFloat("yVelocity", rb.velocity.y);
-        anim.SetBool("isWallSliding", wallSlide);
+        anim.SetBool("isWallSliding", isWallSliding);
+        anim.SetBool("isTouchingWall", isTouchingWall);
     }
 
     void GroundTouch()
     {
         hasDashed = false;
         isDashing = false;
+        groundTouch = true;
     }
 
     private void Dash(float x, float y)
-    {
-        Camera.main.transform.DOComplete();
-        Camera.main.transform.DOShakePosition(.2f, .5f, 14, 90, false, true);
-        
+    {       
         if (x == 0 && y == 0)
             x = xInputIsRight ? 1 : -1;
 
@@ -176,7 +214,7 @@ public class PlayerController : MonoBehaviour {
 
         yield return new WaitForSeconds(.3f);
 
-        rb.gravityScale = 3;
+        rb.gravityScale = 4;
         GetComponent<Jumping>().enabled = true;
         wallJumped = false;
         isDashing = false;
@@ -189,36 +227,36 @@ public class PlayerController : MonoBehaviour {
             hasDashed = false;
     }
 
-    private void WallJump()
-    {
-        if (!isTouchingWall) return;
-        
-        xInputIsRight = !xInputIsRight;
-        Flip(false);
-
-        // StopCoroutine(DisableMovement(0));
-        // StartCoroutine(DisableMovement(.1f));
-
-        Vector2 wallDir = xInputIsRight ? Vector2.right : Vector2.left;
-
-        Jump(Vector2.up / 1.5f + wallDir / 1.5f);
-
-        wallJumped = true;
+    private void NormalJump(Vector2 dir) {
+        if(!isWallSliding) {
+            rb.velocity = new Vector2(rb.velocity.x, 0);
+            rb.velocity += dir * jumpForce;
+            jumpTimer = 0;
+            isAttemptingToJump = false;
+        }
     }
     
-    private void WallSlide()
-    {
-        if (!canMove)
-            return;
-
-        bool pushingWall = false;
-        if((rb.velocity.x > 0 && isTouchingWall) || (rb.velocity.x < 0 && isTouchingWall))
-        {
-            pushingWall = true;
+    private void WallJump() {
+        if(canWallJump) {
+            rb.velocity = new Vector2(rb.velocity.x, 0.0f);
+            isWallSliding = false;
+            Vector2 forceToAdd = new Vector2(wallJumpForce * wallJumpDirection.x * -side, wallJumpForce * wallJumpDirection.y);
+            rb.AddForce(forceToAdd, ForceMode2D.Impulse);
+            jumpTimer = 0;
+            isAttemptingToJump = false;
+            turnTimer = 0;
+            canMove = true;
+            canFlip = true;
+            hasWallJumped = true;
+            wallJumpTimer = wallJumpTimerSet;
+            lastWallJumpDirection = -side;
         }
-        float push = pushingWall ? 0 : rb.velocity.x;
+    }
 
-        rb.velocity = new Vector2(push, -slideSpeed);
+    private void WallSlide() {
+        if (rb.velocity.y < -wallSlideSpeed) {
+                rb.velocity = new Vector2(rb.velocity.x, -wallSlideSpeed);
+        }
     }
 
     private void Walk(Vector2 dir)
@@ -226,21 +264,42 @@ public class PlayerController : MonoBehaviour {
         if (!canMove) {
             isWalking = false;
             return;
-        }   
+        }
+        
+        Vector2 newVelocity = new Vector2(dir.x * speed, rb.velocity.y);
+        
         if (!wallJumped)
         {
-            rb.velocity = new Vector2(dir.x * speed, rb.velocity.y);
+            rb.velocity = newVelocity;
+            return;
         }
-        else
-        {
-            rb.velocity = Vector2.Lerp(rb.velocity, (new Vector2(dir.x * speed, rb.velocity.y)), wallJumpLerp * Time.deltaTime);
-        }
+        
+        rb.velocity = Vector2.Lerp(rb.velocity, newVelocity, wallJumpLerp * Time.deltaTime);
     }
 
-    private void Jump(Vector2 dir)
-    {
-        rb.velocity = new Vector2(rb.velocity.x, 0);
-        rb.velocity += dir * jumpForce;
+    private void CheckJump() {
+        if(jumpTimer > 0) {
+            // WallJump
+            if(!isGrounded && isTouchingWall && movementInputDirection != 0 && movementInputDirection != side) {
+                WallJump();
+            } else if(isGrounded) {
+                NormalJump(Vector2.up);
+            }
+        }
+
+        if(isAttemptingToJump)
+            jumpTimer -= Time.deltaTime;
+
+        if(wallJumpTimer > 0) {
+            if(hasWallJumped && movementInputDirection == -lastWallJumpDirection) {
+                rb.velocity = new Vector2(rb.velocity.x, 0.0f);
+                hasWallJumped = false;
+            } else if(wallJumpTimer <= 0 ) {
+                hasWallJumped = false;
+            } else {
+                wallJumpTimer -= Time.deltaTime;
+            }
+        }
     }
 
     IEnumerator DisableMovement(float time)
@@ -257,19 +316,22 @@ public class PlayerController : MonoBehaviour {
 
     private void Flip(bool useOffset = true) 
     {
-        xInputIsRight = !xInputIsRight;
-        transform.Rotate(0.0f, 180.0f, 0.0f);
+        if(canFlip) {
+            xInputIsRight = !xInputIsRight;
+            side *= -1;
+            transform.Rotate(0.0f, 180.0f, 0.0f);
 
-        // Fixes a weird positioning bug when Player is rotated
-        xPos = transform.position.x;
+            // Fixes a weird positioning bug when Player is rotated
+            float xPos = transform.position.x;
+                
+            if (xInputIsRight && useOffset) {
+                xPos += directionOffset;
+            } else if (useOffset) {
+                xPos -= directionOffset;
+            }
             
-        if (xInputIsRight && useOffset) {
-            xPos += directionOffset;
-        } else if (useOffset) {
-            xPos -= directionOffset;
+            transform.position = new Vector3(xPos, transform.position.y, transform.position.z);
         }
-        
-        transform.position = new Vector3(xPos, transform.position.y, transform.position.z);
     }
 
     private void OnDrawGizmos() 

@@ -47,6 +47,9 @@ TagManager:
   - name: Platforms
     uniqueID: 1209380181
     locked: 0
+  - name: Ghost Trail
+    uniqueID: 1628001187
+    locked: 0
   - name: Player
     uniqueID: 3039950625
     locked: 0

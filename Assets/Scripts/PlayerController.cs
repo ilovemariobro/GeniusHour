@@ -27,9 +27,11 @@ public class PlayerController : MonoBehaviour {
     public float wallJumpForce = 20;
     public float jumpTimerSet = 0.15f;
     public float turnTimerSet = 0.1f;
+    public float wallJumpTimerSet = 0.5f;
     private float movementInputDirection;
     private float jumpTimer;
     private float turnTimer;
+    private float wallJumpTimer;
     private int lastWallJumpDirection;
     public int side = 1;
 
@@ -186,10 +188,7 @@ public class PlayerController : MonoBehaviour {
     }
 
     private void Dash(float x, float y)
-    {
-        Camera.main.transform.DOComplete();
-        Camera.main.transform.DOShakePosition(.2f, .5f, 14, 90, false, true);
-        
+    {       
         if (x == 0 && y == 0)
             x = xInputIsRight ? 1 : -1;
 
@@ -248,6 +247,9 @@ public class PlayerController : MonoBehaviour {
             turnTimer = 0;
             canMove = true;
             canFlip = true;
+            hasWallJumped = true;
+            wallJumpTimer = wallJumpTimerSet;
+            lastWallJumpDirection = -side;
         }
     }
 
@@ -279,7 +281,6 @@ public class PlayerController : MonoBehaviour {
         if(jumpTimer > 0) {
             // WallJump
             if(!isGrounded && isTouchingWall && movementInputDirection != 0 && movementInputDirection != side) {
-                Debug.Log("Ran");
                 WallJump();
             } else if(isGrounded) {
                 NormalJump(Vector2.up);
@@ -288,6 +289,17 @@ public class PlayerController : MonoBehaviour {
 
         if(isAttemptingToJump)
             jumpTimer -= Time.deltaTime;
+
+        if(wallJumpTimer > 0) {
+            if(hasWallJumped && movementInputDirection == -lastWallJumpDirection) {
+                rb.velocity = new Vector2(rb.velocity.x, 0.0f);
+                hasWallJumped = false;
+            } else if(wallJumpTimer <= 0 ) {
+                hasWallJumped = false;
+            } else {
+                wallJumpTimer -= Time.deltaTime;
+            }
+        }
     }
 
     IEnumerator DisableMovement(float time)

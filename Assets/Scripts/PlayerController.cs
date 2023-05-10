@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using DG.Tweening;
 
 public class PlayerController : MonoBehaviour {
@@ -27,7 +28,7 @@ public class PlayerController : MonoBehaviour {
     public float wallJumpForce = 20;
     public float jumpTimerSet = 0.15f;
     public float turnTimerSet = 0.1f;
-    public float wallJumpTimerSet = 0.5f;
+    public float wallJumpTimerSet = 0.75f;
     private float movementInputDirection;
     private float jumpTimer;
     private float turnTimer;
@@ -52,13 +53,11 @@ public class PlayerController : MonoBehaviour {
 
     [Space]
     public bool xInputIsRight = true;
-    
     private bool groundTouch;
     private bool hasDashed;
 
     // Start is called before the first frame update
-    void Start()
-    {   
+    void Start() {   
         sr = GetComponent<SpriteRenderer>();
         rb = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
@@ -66,8 +65,7 @@ public class PlayerController : MonoBehaviour {
     }
 
     // Update is called once per frame
-    void Update()
-    {
+    void Update() {
         float xInput = Input.GetAxis("Horizontal");
         float yInput = Input.GetAxis("Vertical");
         float xRawInput = Input.GetAxisRaw("Horizontal");
@@ -78,22 +76,20 @@ public class PlayerController : MonoBehaviour {
         UpdateAnimations();
         CheckJump();
 
-        if(canMove)
+        if (Input.GetKeyDown(KeyCode.R))
+            SceneManager.LoadScene(0);
+        
+        if (canMove)
             Walk(inputDir);
 
-        if (isGrounded && !isDashing)
-        {
+        if (isGrounded && !isDashing) {
             wallJumped = false;
             GetComponent<Jumping>().enabled = true;
         }
         
-        if(isTouchingWall && !isGrounded)
-        {
-            // if (xInput != 0)
-            // {
-                isWallSliding = true;
-                WallSlide();
-            // }
+        if (isTouchingWall && !isGrounded) {
+            isWallSliding = true;
+            WallSlide();
         }
 
         if (!isTouchingWall || isGrounded)
@@ -108,25 +104,24 @@ public class PlayerController : MonoBehaviour {
             }
         }
 
-        if(isTouchingWall)
+        if (isTouchingWall)
             canWallJump = true;
 
         if (Input.GetButtonDown("Dash") && !hasDashed)
             Dash(xRawInput, yRawInput);
         
-        if(Input.GetButtonDown("Horizontal") && isTouchingWall) {
-            if(!isGrounded && movementInputDirection != side) {
+        if (Input.GetButtonDown("Horizontal") && isTouchingWall) {
+            if (!isGrounded && movementInputDirection != side) {
                 canMove = false;
                 canFlip = false;
-
                 turnTimer = turnTimerSet;
             }
         }
 
-        if(!canMove) {
+        if (!canMove) {
             turnTimer -= Time.deltaTime;
 
-            if(turnTimer <=0) {
+            if (turnTimer <=0) {
                 canMove = true;
                 canFlip = true;
             }
@@ -135,22 +130,20 @@ public class PlayerController : MonoBehaviour {
         if (isGrounded && !groundTouch)
             GroundTouch();
 
-        if(!isGrounded && groundTouch)
+        if (!isGrounded && groundTouch)
             groundTouch = false;
 
         if (isWallSliding || !canMove)
             return;
 
-        if(xInput != 0) xInputIsRight = xInput > 0;
+        if (xInput != 0) xInputIsRight = xInput > 0;
     }
 
-    private void FixedUpdate()
-    {
+    private void FixedUpdate() {
         CollisionDetection();
     }
     
-    private void CollisionDetection()
-    {
+    private void CollisionDetection() {
        isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, whatIsGround);
        isTouchingWall = Physics2D.Raycast(wallCheck.position, transform.right, wallCheckDistance, whatIsGround);
     }
@@ -159,8 +152,7 @@ public class PlayerController : MonoBehaviour {
         isWallSliding = isTouchingWall && movementInputDirection == (xInputIsRight ? 1 : -1) && rb.velocity.y < 0;
     }
 
-    private void CheckMovementDirection()
-    {
+    private void CheckMovementDirection() {
         movementInputDirection = Input.GetAxisRaw("Horizontal");
         if (xInputIsRight && movementInputDirection < 0) {
             Flip();
@@ -171,8 +163,7 @@ public class PlayerController : MonoBehaviour {
         isWalking = Mathf.Abs(rb.velocity.x) > 0.1f;
     }
 
-    private void UpdateAnimations()
-    {
+    private void UpdateAnimations() {
         anim.SetBool("isWalking", isWalking);
         anim.SetBool("isGrounded", isGrounded);
         anim.SetFloat("yVelocity", rb.velocity.y);
@@ -180,15 +171,13 @@ public class PlayerController : MonoBehaviour {
         anim.SetBool("isTouchingWall", isTouchingWall);
     }
 
-    void GroundTouch()
-    {
+    void GroundTouch() {
         hasDashed = false;
         isDashing = false;
         groundTouch = true;
     }
 
-    private void Dash(float x, float y)
-    {       
+    private void Dash(float x, float y) {       
         if (x == 0 && y == 0)
             x = xInputIsRight ? 1 : -1;
 
@@ -201,8 +190,7 @@ public class PlayerController : MonoBehaviour {
         StartCoroutine(DashWait());
     }
 
-    IEnumerator DashWait()
-    {
+    IEnumerator DashWait() {
         FindObjectOfType<GhostTrail>().ShowGhost();
         StartCoroutine(GroundDash());
         DOVirtual.Float(14, 0, .8f, RigidbodyDrag);
@@ -220,15 +208,14 @@ public class PlayerController : MonoBehaviour {
         isDashing = false;
     }
 
-    IEnumerator GroundDash()
-    {
+    IEnumerator GroundDash() {
         yield return new WaitForSeconds(.15f);
         if (isGrounded)
             hasDashed = false;
     }
 
     private void NormalJump(Vector2 dir) {
-        if(!isWallSliding) {
+        if (!isWallSliding) {
             rb.velocity = new Vector2(rb.velocity.x, 0);
             rb.velocity += dir * jumpForce;
             jumpTimer = 0;
@@ -237,7 +224,7 @@ public class PlayerController : MonoBehaviour {
     }
     
     private void WallJump() {
-        if(canWallJump) {
+        if (canWallJump) {
             rb.velocity = new Vector2(rb.velocity.x, 0.0f);
             isWallSliding = false;
             Vector2 forceToAdd = new Vector2(wallJumpForce * wallJumpDirection.x * -side, wallJumpForce * wallJumpDirection.y);
@@ -259,8 +246,7 @@ public class PlayerController : MonoBehaviour {
         }
     }
 
-    private void Walk(Vector2 dir)
-    {
+    private void Walk(Vector2 dir) {
         if (!canMove) {
             isWalking = false;
             return;
@@ -278,23 +264,23 @@ public class PlayerController : MonoBehaviour {
     }
 
     private void CheckJump() {
-        if(jumpTimer > 0) {
+        if (jumpTimer > 0) {
             // WallJump
-            if(!isGrounded && isTouchingWall && movementInputDirection != 0 && movementInputDirection != side) {
+            if (!isGrounded && isTouchingWall && movementInputDirection != 0 && movementInputDirection != side) {
                 WallJump();
-            } else if(isGrounded) {
+            } else if (isGrounded) {
                 NormalJump(Vector2.up);
             }
         }
 
-        if(isAttemptingToJump)
+        if (isAttemptingToJump)
             jumpTimer -= Time.deltaTime;
 
-        if(wallJumpTimer > 0) {
-            if(hasWallJumped && movementInputDirection == -lastWallJumpDirection) {
+        if (wallJumpTimer > 0) {
+            if (hasWallJumped && movementInputDirection == -lastWallJumpDirection) {
                 rb.velocity = new Vector2(rb.velocity.x, 0.0f);
                 hasWallJumped = false;
-            } else if(wallJumpTimer <= 0 ) {
+            } else if (wallJumpTimer <= 0 ) {
                 hasWallJumped = false;
             } else {
                 wallJumpTimer -= Time.deltaTime;
@@ -302,21 +288,18 @@ public class PlayerController : MonoBehaviour {
         }
     }
 
-    IEnumerator DisableMovement(float time)
-    {
+    IEnumerator DisableMovement(float time) {
         canMove = false;
         yield return new WaitForSeconds(time);
         canMove = true;
     }
 
-    void RigidbodyDrag(float x)
-    {
+    void RigidbodyDrag(float x) {
         rb.drag = x;
     }
 
-    private void Flip(bool useOffset = true) 
-    {
-        if(canFlip) {
+    private void Flip(bool useOffset = true) {
+        if (canFlip) {
             xInputIsRight = !xInputIsRight;
             side *= -1;
             transform.Rotate(0.0f, 180.0f, 0.0f);
@@ -334,8 +317,7 @@ public class PlayerController : MonoBehaviour {
         }
     }
 
-    private void OnDrawGizmos() 
-    {
+    private void OnDrawGizmos() {
         Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
         Gizmos.DrawLine(wallCheck.position, new Vector3(wallCheck.position.x + wallCheckDistance, wallCheck.position.y, wallCheck.position.z));
     }

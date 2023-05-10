@@ -50746,7 +50746,7 @@ MonoBehaviour:
   wallJumpForce: 20
   jumpTimerSet: 0.15
   turnTimerSet: 0.1
-  wallJumpTimerSet: 0.5
+  wallJumpTimerSet: 0.75
   side: 1
   wallJumped: 0
   isWallSliding: 0
